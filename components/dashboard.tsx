@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { AlertTriangle, Camera, Database, Eye, EyeOff } from "lucide-react"
+import { AlertTriangle, Camera, Database, EyeOff } from "lucide-react"
 
 interface DetectedObject {
   id: number
@@ -18,7 +18,7 @@ interface DetectedObject {
   camera_ip: string
 }
 
-const CAMERA_IPS = ["192.168.1.100", "192.168.1.101", "192.168.1.102", "192.168.1.103"]
+const CAMERA_IPS = ["192.168.1.73", "192.168.1.101", "192.168.1.102", "192.168.1.103"]
 const MODEL_LABELS = ["fire", "smoke", "person", "vehicle", "explosion"]
 
 export function Dashboard() {
@@ -79,19 +79,26 @@ export function Dashboard() {
   }
 
   const toggleDetection = async () => {
-    if (!selectedCamera) return;
+    if (!selectedCamera) return alert("Select a camera first")
     const url = isDetecting
       ? `http://127.0.0.1:8000/stop-detection?camera_ip=${selectedCamera}`
-      : `http://127.0.0.1:8000/start-detection?camera_ip=${selectedCamera}`;
-    await fetch(url, { method: 'POST' });
-    setIsDetecting(!isDetecting);
+      : `http://127.0.0.1:8000/start-detection?camera_ip=${selectedCamera}`
+    try {
+      await fetch(url, { method: 'POST' })
+      setIsDetecting(!isDetecting)
+    } catch (err) {
+      alert("Failed to contact backend")
+      console.error(err)
+    }
   }
+
+  const buildRtspUrl = (ip: string) => `rtsp://admin:123456Ai@${ip}:554/snl/live/1/3`
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Fire Detection System</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI CCTV</h1>
           <div className="flex items-center justify-center gap-4">
             <Button onClick={toggleDetection} variant={isDetecting ? "destructive" : "default"}>
               {isDetecting ? "Stop Detection" : "Start Detection"}
@@ -113,7 +120,7 @@ export function Dashboard() {
               <CardContent>
                 <Select value={selectedCamera} onValueChange={setSelectedCamera}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select camera IP" />
+                    <SelectValue placeholder="Select camera" />
                   </SelectTrigger>
                   <SelectContent>
                     {CAMERA_IPS.map((ip) => (
@@ -130,11 +137,10 @@ export function Dashboard() {
                 <div className="aspect-video bg-black rounded-lg flex items-center justify-center text-white text-sm">
                   {selectedCamera ? (
                     isDetecting ? (
-                      <iframe
-                        src={`http://localhost:8554/stream?url=${encodeURIComponent(selectedCamera)}`}
-                        className="w-full h-full border-none"
-                        title="Camera Feed"
-                        allowFullScreen
+                      <img
+                        src={`http://localhost:8000/stream?camera_url=${encodeURIComponent(buildRtspUrl(selectedCamera))}`}
+                        alt="Live Camera"
+                        className="w-full h-full object-contain rounded"
                       />
                     ) : (
                       <div className="text-center">
